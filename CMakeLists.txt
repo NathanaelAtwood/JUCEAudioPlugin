@@ -24,7 +24,8 @@ include(${CPM_DOWNLOAD_LOCATION})
 CPMAddPackage(
     NAME juce
     GIT_REPOSITORY https://github.com/juce-framework/JUCE.git
-    GIT_TAG origin/master
+    GIT_TAG 7.0.9
+    GIT_SHALLOW TRUE
 )
 
 # Make sure you include any new source files here

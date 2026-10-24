@@ -2,7 +2,7 @@
 #include "PluginEditor.h"
 
 //==============================================================================
-AudioPluginAudioProcessor::AudioPluginAudioProcessor()
+AudioPluginAudioProcessor::AudioPluginAudioProcessor() // Constructor
      : AudioProcessor (BusesProperties()
                      #if ! JucePlugin_IsMidiEffect
                       #if ! JucePlugin_IsSynth
@@ -12,13 +12,16 @@ AudioPluginAudioProcessor::AudioPluginAudioProcessor()
                      #endif
                        )
 {
+
 }
 
-AudioPluginAudioProcessor::~AudioPluginAudioProcessor()
+AudioPluginAudioProcessor::~AudioPluginAudioProcessor()  // Destructor
 {
+
 }
 
 //==============================================================================
+//Everything below here is defined by CMakeLists.txt
 const juce::String AudioPluginAudioProcessor::getName() const
 {
     return JucePlugin_Name;
@@ -50,13 +53,13 @@ bool AudioPluginAudioProcessor::isMidiEffect() const
     return false;
    #endif
 }
-
-double AudioPluginAudioProcessor::getTailLengthSeconds() const
+// ================================================================
+double AudioPluginAudioProcessor::getTailLengthSeconds() const // Tail length is amount of time plugin continues after stopping playback (e.x. reverb tails)
 {
     return 0.0;
 }
 
-int AudioPluginAudioProcessor::getNumPrograms()
+int AudioPluginAudioProcessor::getNumPrograms() //Not sure but these sound like they are presets of some sort =====================
 {
     return 1;   // NB: some hosts don't cope very well if you tell them there are 0 programs,
                 // so this should be at least 1, even if you're not really implementing programs.
@@ -84,7 +87,7 @@ void AudioPluginAudioProcessor::changeProgramName (int index, const juce::String
 }
 
 //==============================================================================
-void AudioPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
+void AudioPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock) //IMPORTANT called prepare,reset,preparetoplay by different programmers
 {
     // Use this method as the place to do any pre-playback
     // initialisation that you need..
@@ -97,7 +100,7 @@ void AudioPluginAudioProcessor::releaseResources()
     // spare memory, etc.
 }
 
-bool AudioPluginAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
+bool AudioPluginAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const //daw calls to match config of plugin, ex cant match 5.1 to stereo plugin, returns false
 {
   #if JucePlugin_IsMidiEffect
     juce::ignoreUnused (layouts);
@@ -121,12 +124,12 @@ bool AudioPluginAudioProcessor::isBusesLayoutSupported (const BusesLayout& layou
   #endif
 }
 
-void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
+void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, // this is like a function block, input to function block returns an output
                                               juce::MidiBuffer& midiMessages)
 {
     juce::ignoreUnused (midiMessages);
 
-    juce::ScopedNoDenormals noDenormals;
+    juce::ScopedNoDenormals noDenormals; //optimization, Denormals process floating point like .000004, processing gets expensive so noDenormals zeroes those out
     auto totalNumInputChannels  = getTotalNumInputChannels();
     auto totalNumOutputChannels = getTotalNumOutputChannels();
 
@@ -156,12 +159,12 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
 //==============================================================================
 bool AudioPluginAudioProcessor::hasEditor() const
 {
-    return true; // (change this to false if you choose to not supply an editor)
+    return true; // (change this to false if you choose to not supply an editor) // this refers to the graphic interface the user sees
 }
 
 juce::AudioProcessorEditor* AudioPluginAudioProcessor::createEditor()
 {
-    return new AudioPluginAudioProcessorEditor (*this);
+    return new AudioPluginAudioProcessorEditor (*this); //used to edit the editor. shocking right
 }
 
 //==============================================================================
