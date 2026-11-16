@@ -3,6 +3,21 @@
 
 //==============================================================================
 
+ChainSettings getChainSettings(juce::AudioProcessorValueTreeState& apvts) {
+    ChainSettings settings;
+
+    settings.lowCutFreq = apvts.getRawParameterValue("LowCut Frequency")->load();
+    settings.highCutFreq = apvts.getRawParameterValue("HighCut Frequency")->load();
+    settings.peakFreq = apvts.getRawParameterValue("Peak Frequency")->load();
+    settings.peakGainInDecibels = apvts.getRawParameterValue("Peak Gain")->load();
+    settings.peakQuality = apvts.getRawParameterValue("Peak Quality")->load();
+    settings.lowCutSlope = apvts.getRawParameterValue("LowCut Slope")->load();
+    settings.highCutSlope = apvts.getRawParameterValue("LowCut Slope")->load();
+
+    return settings;
+}
+
+//==============================================================================
 juce::AudioProcessorValueTreeState::ParameterLayout
 AudioPluginAudioProcessor::createParameterLayout()
 {
@@ -147,11 +162,19 @@ void AudioPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
 
     juce::dsp::ProcessSpec spec;
     spec.maximumBlockSize = samplesPerBlock;
-    spec.numChannels =1;
+    spec.numChannels = 1;
     spec.sampleRate = sampleRate;
 
     leftChain.prepare(spec);
     rightChain.prepare(spec);
+
+    auto chainSettings = getChainSettings(apvts);
+
+    auto peakCoefficients = juce::dsp::IIR::Coefficients<float>::makePeakFilter(sampleRate, chainSettings.peakFreq, chainSettings.peakQuality,
+        juce::Decibels::decibelsToGain(chainSettings.peakGainInDecibels));
+
+    *leftChain.get<ChainPositions::Peak>().coefficients = *peakCoefficients;
+    *rightChain.get<ChainPositions::Peak>().coefficients = *peakCoefficients;
 
 }
 
@@ -203,6 +226,14 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, 
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear (i, 0, buffer.getNumSamples());
 
+
+    auto chainSettings = getChainSettings(apvts);
+
+    auto peakCoefficients = juce::dsp::IIR::Coefficients<float>::makePeakFilter(getSampleRate(), chainSettings.peakFreq, chainSettings.peakQuality,
+        juce::Decibels::decibelsToGain(chainSettings.peakGainInDecibels));
+
+    *leftChain.get<ChainPositions::Peak>().coefficients = *peakCoefficients;
+    *rightChain.get<ChainPositions::Peak>().coefficients = *peakCoefficients;
     // This is the place where you'd normally do the guts of your plugin's
     // audio processing...
     // Make sure to reset the state if your inner loop is processing
