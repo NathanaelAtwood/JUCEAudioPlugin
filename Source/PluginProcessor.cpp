@@ -29,6 +29,38 @@ void AudioPluginAudioProcessor::updateCoefficients(Coefficients &old, const Coef
     *old = *replacements;
 }
 
+void AudioPluginAudioProcessor::updateLowCutFilters(const ChainSettings &chainSettings) {
+    auto lowCutCoefficients = juce::dsp::FilterDesign<float>::designIIRHighpassHighOrderButterworthMethod(chainSettings.lowCutFreq,
+        getSampleRate(),
+        (chainSettings.lowCutSlope + 1) * 2); //Filter order 2 for 12db/oct, 4 for 24 db/oct, etc.
+
+    auto& leftLowCut = leftChain.get<ChainPositions::LowCut>();
+    auto& rightLowCut = rightChain.get<ChainPositions::LowCut>();
+
+    updateCutFilter(leftLowCut, lowCutCoefficients, chainSettings.lowCutSlope);
+    updateCutFilter(rightLowCut, lowCutCoefficients, chainSettings.lowCutSlope);
+
+}
+
+void AudioPluginAudioProcessor::updateHighCutFilters(const ChainSettings &chainSettings) {
+    auto highCutCoefficients = juce::dsp::FilterDesign<float>::designIIRLowpassHighOrderButterworthMethod(chainSettings.highCutFreq,
+        getSampleRate(),
+        (chainSettings.highCutSlope + 1) * 2);
+
+    auto& leftHighCut = leftChain.get<ChainPositions::HighCut>();
+    updateCutFilter(leftHighCut, highCutCoefficients, chainSettings.highCutSlope);
+
+    auto& rightHighCut = rightChain.get<ChainPositions::HighCut>();
+    updateCutFilter(rightHighCut, highCutCoefficients, chainSettings.highCutSlope);
+
+}
+
+void AudioPluginAudioProcessor::updateFilters() {
+    auto chainSettings = getChainSettings(apvts);
+    updateLowCutFilters(chainSettings);
+    updatePeakFilter(chainSettings);
+    updateHighCutFilters(chainSettings);
+}
 //==============================================================================
 juce::AudioProcessorValueTreeState::ParameterLayout
 AudioPluginAudioProcessor::createParameterLayout()
@@ -139,7 +171,7 @@ double AudioPluginAudioProcessor::getTailLengthSeconds() const // Tail length is
     return 0.0;
 }
 
-int AudioPluginAudioProcessor::getNumPrograms() //Not sure but these sound like they are presets of some sort =====================
+int AudioPluginAudioProcessor::getNumPrograms() //programs are sort of presets on a plugin here
 {
     return 1;   // NB: some hosts don't cope very well if you tell them there are 0 programs,
                 // so this should be at least 1, even if you're not really implementing programs.
@@ -180,22 +212,7 @@ void AudioPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
     leftChain.prepare(spec);
     rightChain.prepare(spec);
 
-    //==============================================================================
-
-    auto chainSettings = getChainSettings(apvts);
-
-    updatePeakFilter(chainSettings);
-
-    auto cutCoefficients = juce::dsp::FilterDesign<float>::designIIRHighpassHighOrderButterworthMethod(chainSettings.lowCutFreq, sampleRate,
-        (chainSettings.lowCutSlope + 1) * 2); //Filter order 2 for 12db/oct, 4 for 24 db/oct, etc.
-
-    auto& leftLowCut = leftChain.get<ChainPositions::LowCut>();
-    updateCutFilter(leftLowCut, cutCoefficients, chainSettings.lowCutSlope);
-
-    auto& rightLowCut = rightChain.get<ChainPositions::LowCut>();
-    updateCutFilter(rightLowCut, cutCoefficients, chainSettings.lowCutSlope);
-
-    //==============================================================================
+    updateFilters();
 }
 
 void AudioPluginAudioProcessor::releaseResources()
@@ -245,24 +262,8 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, 
     // this code if your algorithm always overwrites all the output channels.
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear (i, 0, buffer.getNumSamples());
-
-    //==============================================================================
-
-    auto chainSettings = getChainSettings(apvts);
-
-    updatePeakFilter(chainSettings);
-
-    auto cutCoefficients = juce::dsp::FilterDesign<float>::designIIRHighpassHighOrderButterworthMethod(chainSettings.lowCutFreq, getSampleRate(),
-        (chainSettings.lowCutSlope + 1) * 2); //Filter order 2 for 12db/oct, 4 for 24 db/oct, etc.
-
-    auto& leftLowCut = leftChain.get<ChainPositions::LowCut>();
-
-    updateCutFilter(leftLowCut, cutCoefficients, chainSettings.lowCutSlope);
-
-    auto& rightLowCut = rightChain.get<ChainPositions::LowCut>();
-    updateCutFilter(rightLowCut, cutCoefficients, chainSettings.lowCutSlope);
-
-    //==============================================================================
+    
+    updateFilters();
 
     juce::dsp::AudioBlock<float> block(buffer);
 
